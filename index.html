@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI旅行规划师</title>
+    
+    <!-- 百度地图API将由JavaScript动态加载 -->
+    
+    <!-- Supabase SDK (用于云端保存功能) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- 样式表 -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <header class="header">
+        <div class="container">
+            <h1>🌍 AI旅行规划师</h1>
+            <div class="header-buttons">
+                <button id="auth-btn" onclick="openAuthModal()">🔐 登录</button>
+                <button id="settings-btn" onclick="openSettings()">⚙️ 设置</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区域 -->
+    <main class="main-container">
+        <div class="container">
+            
+            <!-- 输入表单 -->
+            <section class="input-section">
+                <h2>📝 旅行信息</h2>
+                
+                <div class="form-group">
+                    <label for="destination">目的地</label>
+                    <input type="text" id="destination" placeholder="例如：日本东京">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="days">天数</label>
+                        <input type="number" id="days" placeholder="5" min="1">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="budget">预算（元）</label>
+                        <input type="number" id="budget" placeholder="10000" min="0">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="travelers">人数</label>
+                        <input type="number" id="travelers" placeholder="2" min="1">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="preferences">旅行偏好</label>
+                    <input type="text" id="preferences" placeholder="例如：美食、文化、自然">
+                    <small>支持：美食、文化、自然、购物、亲子、动漫、冒险、放松、摄影、夜生活</small>
+                </div>
+                
+                <!-- 语音输入和生成按钮 -->
+                <div class="button-group">
+                    <button id="voice-btn" onclick="toggleVoiceInput()">🎤 点击语音输入</button>
+                    <button id="generate-btn" onclick="generateTravelPlan()" class="primary-btn">✨ 生成旅行计划</button>
+                </div>
+                
+                <!-- 语音识别状态显示 -->
+                <div id="voice-status" class="voice-status"></div>
+                <div id="voice-result" class="voice-result"></div>
+            </section>
+            
+            <!-- 地图容器 -->
+            <section class="map-section">
+                <h2>🗺️ 地图</h2>
+                <div id="map-container" style="width: 100%; height: 400px; border-radius: 8px; overflow: hidden; background: #f0f0f0;"></div>
+            </section>
+            
+            <!-- 结果展示区域 -->
+            <section id="result-container" class="result-section" style="display: none;">
+                <h2>📋 旅行计划</h2>
+                <div id="result-content"></div>
+                
+                <!-- 操作按钮 -->
+                <div class="action-buttons">
+                    <button id="save-plan-btn" onclick="saveCurrentPlan()" style="display: none;">💾 保存计划</button>
+                    <button onclick="exportPlan()">📄 导出计划</button>
+                </div>
+            </section>
+            
+        </div>
+    </main>
+
+    <!-- 加载动画 -->
+    <div id="loading" class="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+        <p>AI正在为您规划旅行...</p>
+    </div>
+
+    <!-- 设置模态框 -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeSettings()">&times;</span>
+            <h2>⚙️ 设置</h2>
+            
+            <div class="form-group">
+                <label for="api-key-input">阿里云通义千问 API Key（必需）</label>
+                <input type="password" id="api-key-input" placeholder="sk-...">
+                <small>在 <a href="https://dashscope.console.aliyun.com/" target="_blank">阿里云控制台</a> 获取</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="supabase-url-input">Supabase URL（可选，用于云端保存）</label>
+                <input type="text" id="supabase-url-input" placeholder="https://xxx.supabase.co">
+            </div>
+            
+            <div class="form-group">
+                <label for="supabase-key-input">Supabase Anon Key（可选）</label>
+                <input type="password" id="supabase-key-input" placeholder="eyJ...">
+                <small>在 <a href="https://supabase.com/dashboard" target="_blank">Supabase控制台</a> 获取</small>
+            </div>
+            
+            <hr>
+            
+            <h3>地图设置</h3>
+            
+            <div class="form-group">
+                <label for="baidu-map-key-input">百度地图 API Key（可选）</label>
+                <input type="text" id="baidu-map-key-input" placeholder="输入百度地图API Key">
+                <small>在 <a href="https://lbsyun.baidu.com/apiconsole/key" target="_blank">百度地图开放平台</a> 获取</small>
+            </div>
+            
+            <hr>
+            
+            <h3>高级设置（可选）</h3>
+            
+            <div class="form-group">
+                <label for="xfyun-appid-input">科大讯飞 AppID（可选）</label>
+                <input type="text" id="xfyun-appid-input" placeholder="用于增强语音识别">
+            </div>
+            
+            <div class="form-group">
+                <label for="xfyun-secret-input">科大讯飞 API Secret（可选）</label>
+                <input type="password" id="xfyun-secret-input">
+            </div>
+            
+            <div class="form-group">
+                <label for="xfyun-key-input">科大讯飞 API Key（可选）</label>
+                <input type="password" id="xfyun-key-input">
+            </div>
+            
+            <button onclick="saveSettings()" class="primary-btn">保存设置</button>
+        </div>
+    </div>
+
+    <!-- 登录/注册模态框 -->
+    <div id="auth-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeAuthModal()">&times;</span>
+            <h2>🔐 登录 / 注册</h2>
+            
+            <div class="form-group">
+                <label for="auth-email">邮箱</label>
+                <input type="email" id="auth-email" placeholder="your@email.com">
+            </div>
+            
+            <div class="form-group">
+                <label for="auth-password">密码</label>
+                <input type="password" id="auth-password" placeholder="至少6个字符">
+            </div>
+            
+            <div class="button-group">
+                <button onclick="signIn()">登录</button>
+                <button onclick="signUp()">注册</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 我的计划模态框 -->
+    <div id="plans-modal" class="modal">
+        <div class="modal-content large">
+            <span class="close" onclick="closePlansModal()">&times;</span>
+            <h2>📚 我的旅行计划</h2>
+            <div id="user-plans-list"></div>
+        </div>
+    </div>
+
+    <!-- JavaScript文件（重要：按顺序引入） -->
+    <script src="config.js"></script>
+    <script src="map-handler.js"></script>
+    <script src="script.js"></script>
+    <script src="auth.js"></script>
+</body>
+</html>
