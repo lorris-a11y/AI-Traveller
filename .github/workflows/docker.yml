@@ -3,6 +3,9 @@ name: Build and Push Docker Image to Aliyun
 on:
   push:
     branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   build-and-push:
@@ -22,22 +25,34 @@ jobs:
         username: ${{ secrets.ALIYUN_USERNAME }}
         password: ${{ secrets.ALIYUN_PASSWORD }}
     
-    - name: Extract metadata
+    - name: Extract metadata (tags, labels)
       id: meta
       uses: docker/metadata-action@v4
       with:
         images: ${{ secrets.ALIYUN_REGISTRY }}/${{ secrets.ALIYUN_NAMESPACE }}/ai-traveller
         tags: |
           type=ref,event=branch
-          type=sha
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
           type=raw,value=latest,enable={{is_default_branch}}
     
-    - name: Build and push
+    - name: Build and push Docker image
+      id: build
       uses: docker/build-push-action@v4
       with:
         context: .
+        file: ./Dockerfile
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        platforms: linux/amd64
+    
+    - name: Output success message
+      run: |
+        echo "✅ Docker image built and pushed successfully!"
+        echo "📦 Image: ${{ secrets.ALIYUN_REGISTRY }}/${{ secrets.ALIYUN_NAMESPACE }}/ai-traveller:latest"
+        echo ""
+        echo "Pull command:"
+        echo "docker pull ${{ secrets.ALIYUN_REGISTRY }}/${{ secrets.ALIYUN_NAMESPACE }}/ai-traveller:latest"
