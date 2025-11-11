@@ -18,6 +18,13 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
     
+    - name: Debug - Check Registry URL (masked)
+      run: |
+        echo "Registry URL length: ${#REGISTRY}"
+        echo "Registry URL prefix: ${REGISTRY:0:20}..."
+      env:
+        REGISTRY: ${{ secrets.ALIYUN_REGISTRY }}
+    
     - name: Login to Aliyun Container Registry
       uses: docker/login-action@v2
       with:
